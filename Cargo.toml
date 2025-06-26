@@ -1,0 +1,27 @@
+[package]
+name = "vless-worker-rs"
+version = "0.1.0"
+edition = "2021"
+authors = ["Cliff <cliff.hp@gmail.com>"]
+
+[package.metadata.release]
+release = false
+
+# https://github.com/rustwasm/wasm-pack/issues/1247
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+worker = { version = "0.6.0", features = ['http'] }
+worker-macros = { version = "0.6.0", features = ['http'] }
+console_error_panic_hook = { version = "0.1.7" }
+http = "1.3"
+uuid = "1.17.0"
+anyhow = "1.0.98"
+futures = "0.3.31"
+base64 = "0.22.1"
+bytes = "1.10.1"
+tokio = { version = "1.45.1", default-features = false, features = ["io-util"] }

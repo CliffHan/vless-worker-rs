@@ -1,0 +1,6 @@
+name = "vless-worker-rs"
+main = "build/worker/shim.mjs"
+compatibility_date = "2025-06-26"
+
+[build]
+command = "cargo install -q worker-build && worker-build --release"
