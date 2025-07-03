@@ -691,6 +691,7 @@ dependencies = [
  "futures",
  "http",
  "tokio",
+ "url",
  "uuid",
  "worker",
  "worker-macros",

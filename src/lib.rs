@@ -7,7 +7,7 @@ use worker::*;
 
 mod vless;
 
-const UUID: &str = "0700dfc1-6242-590e-b49a-03328379e43f";
+const UUID: &str = "00000000-0000-0000-0000-000000000000";
 const READ_BUFFER_SIZE: usize = 4096;
 
 #[event(fetch)]
@@ -16,6 +16,9 @@ async fn fetch(req: HttpRequest, env: Env, _ctx: Context) -> Result<worker::Resp
     let user_id = uuid::Uuid::parse_str(&uuid_text).map_err(|_| worker::Error::Internal(JsValue::NULL))?;
     let default_vless_path = format!("/vless/{}", &uuid_text);
     let vless_path = env.var("VLESS_PATH").map(|v| v.to_string()).unwrap_or_else(|_| default_vless_path);
+    let default_subscription_path = format!("/sub/{}", &uuid_text);
+    let subscription_path =
+        env.var("SUBSCRIPTION_PATH").map(|v| v.to_string()).unwrap_or_else(|_| default_subscription_path);
 
     let path = req.uri().path();
 
@@ -23,9 +26,13 @@ async fn fetch(req: HttpRequest, env: Env, _ctx: Context) -> Result<worker::Resp
         return handle_vless_connection(req, user_id).await;
     }
 
+    if path == subscription_path {
+        return handle_subscription_request(req, env, user_id, &vless_path);
+    }
+
     // TODO: subscription? and fake index?
 
-    worker::Response::error(format!("Unknown path: {}", path), 404)
+    worker::Response::error(format!("Unknown path: {path}"), 404)
 }
 
 async fn handle_vless_connection(req: HttpRequest, user_id: Uuid) -> Result<worker::Response> {
@@ -113,6 +120,27 @@ async fn handle_ws_connection(server: &WebSocket, user_id: Uuid, early_data: Opt
         }
     }
     Ok(())
+}
+
+fn handle_subscription_request(req: HttpRequest, env: Env, uuid: Uuid, vless_path: &str) -> Result<worker::Response> {
+    let domain = req.uri().host().unwrap_or("unknown");
+    let port = req.uri().port().map(|v| v.as_u16()).unwrap_or(443);
+    let comment = env.var("COMMENT").map(|v| v.to_string()).unwrap_or_else(|_| "vless-worker-rs".to_string());
+    let vless_url: url::Url = vless::VlessUrl {
+        domain: domain.to_string(),
+        port,
+        uuid: uuid.to_string(),
+        encryption: Some("none".to_string()),
+        security: Some("tls".to_string()),
+        sni: Some(domain.to_string()),
+        alpn: Some("h2,http/1.1".to_string()),
+        r#type: Some("ws".to_string()),
+        host: Some(domain.to_string()),
+        path: Some(vless_path.to_string()),
+        comment,
+    }
+    .into();
+    worker::Response::from_html(&vless_url)
 }
 
 // TODO: need to confirm dns message and vless udp message format

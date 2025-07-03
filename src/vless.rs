@@ -1,9 +1,48 @@
 use anyhow::{anyhow, Result};
 use std::fmt::Display;
 use std::net::{Ipv4Addr, Ipv6Addr};
+use url::Url;
 use uuid::Uuid;
 
 const VLESS_VERSION: u8 = 0; // VLESS version 0
+
+#[derive(Debug, Clone, Default)]
+pub struct VlessUrl {
+    pub uuid: String,
+    pub domain: String,
+    pub port: u16,
+    pub encryption: Option<String>,
+    pub security: Option<String>,
+    pub sni: Option<String>,
+    pub alpn: Option<String>,
+    pub r#type: Option<String>,
+    pub host: Option<String>,
+    pub path: Option<String>,
+    pub comment: String,
+}
+
+impl From<VlessUrl> for Url {
+    fn from(val: VlessUrl) -> Self {
+        macro_rules! append_pair {
+            ($url:expr, $key:expr, $value:expr) => {
+                if let Some(v) = $value {
+                    $url.query_pairs_mut().append_pair($key, &v);
+                }
+            };
+        }
+
+        let mut url = Url::parse(&format!("vless://{}@{}:{}", val.uuid, val.domain, val.port)).unwrap();
+        append_pair!(url, "encryption", val.encryption);
+        append_pair!(url, "security", val.security);
+        append_pair!(url, "sni", val.sni);
+        append_pair!(url, "alpn", val.alpn);
+        append_pair!(url, "type", val.r#type);
+        append_pair!(url, "host", val.host);
+        append_pair!(url, "path", val.path);
+        url.set_fragment(Some(&val.comment));
+        url
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub enum VlessCommand {
@@ -21,9 +60,9 @@ pub enum VlessAddress {
 impl Display for VlessAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            VlessAddress::IPv4(addr) => write!(f, "{}", addr),
-            VlessAddress::DomainName(name) => write!(f, "{}", name),
-            VlessAddress::IPv6(addr) => write!(f, "{}", addr),
+            VlessAddress::IPv4(addr) => write!(f, "{addr}"),
+            VlessAddress::DomainName(name) => write!(f, "{name}"),
+            VlessAddress::IPv6(addr) => write!(f, "{addr}"),
         }
     }
 }
